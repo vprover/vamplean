@@ -1,22 +1,13 @@
 import Mathlib.Logic.Basic
 import Lean
-import Duper
+--import Duper
 import Mathlib.Tactic.NthRewrite
 import Qq
 open Lean Elab Tactic Meta
 universe u
-set_option linter.style.longLine false
-set_option linter.all false
-set_option linter.unusedVariables false
-set_option linter.unusedSectionVars false
-set_option warningAsError false
 
-variable {iota : Type u}
-variable [Inhabited iota]
-def inhabit_iota : iota := default
 
-omit [Inhabited iota] in
-theorem or_forall_prenex (A : Prop) (B : iota → Prop) : (A ∨ (∀ v0 : iota, B v0)) ↔ (∀ v0 : iota, (A ∨ B v0)) := by
+theorem or_forall_prenex (ι : Type u) (A : Prop) (B : ι → Prop) : (A ∨ (∀ v0 : ι, B v0)) ↔ (∀ v0 : ι, (A ∨ B v0)) := by
   constructor
   · intro h v0
     cases h with
@@ -29,13 +20,20 @@ theorem or_forall_prenex (A : Prop) (B : iota → Prop) : (A ∨ (∀ v0 : iota,
       | inl a' => contradiction
       | inr b' => exact b'
 
-omit [Inhabited iota] in
-theorem or_forall_prenex_left (A : Prop) (B : iota → Prop) : ((∀ v0 : iota, B v0) ∨ A) ↔ (∀ v0 : iota, (B v0 ∨ A)) := by
-  grind
+theorem or_forall_prenex_left (ι : Type u) (A : Prop) (B : ι → Prop) : ((∀ v0 : ι, B v0) ∨ A) ↔ (∀ v0 : ι, (B v0 ∨ A)) := by
+  constructor
+  · intro h v0
+    cases h with
+    | inl a => left; exact a v0
+    | inr b => right; exact b
+  · intro h
+    by_cases ha : A
+    · right; exact ha
+    · left; intro v0; have hb := h v0; cases hb with
+      | inl b' => exact b'
+      | inr a' => contradiction
 
-
-
-theorem and_forall_prenex (ι : Type u) [Inhabited ι] (A : Prop) (B : ι → Prop) : (A ∧ (∀ v0 : ι, B v0)) ↔ (∀ v0 : ι, (A ∧ B v0)) := by
+theorem and_forall_prenex (ι : Type u) [hι : Nonempty ι] (A : Prop) (B : ι → Prop) : (A ∧ (∀ v0 : ι, B v0)) ↔ (∀ v0 : ι, (A ∧ B v0)) := by
   constructor
   · intro h v0
     have a := h.left
@@ -43,14 +41,12 @@ theorem and_forall_prenex (ι : Type u) [Inhabited ι] (A : Prop) (B : ι → Pr
     exact And.intro a b
   · intro h
     constructor
-    · have a := h default
+    · have a := h (Classical.choice hι)
       exact a.left
     · intro v0
       exact (h v0).right
 
-
-
-theorem and_forall_prenex_left (ι : Type u) [Inhabited ι] (A : Prop) (B : ι → Prop) : ((∀ v0 : ι, B v0) ∧ A) ↔ (∀ v0 : ι, (B v0 ∧ A)) := by
+theorem and_forall_prenex_left (ι : Type u) [hι : Nonempty ι] (A : Prop) (B : ι → Prop) : ((∀ v0 : ι, B v0) ∧ A) ↔ (∀ v0 : ι, (B v0 ∧ A)) := by
   constructor
   · intro h v0
     have a := h.left v0
@@ -60,16 +56,15 @@ theorem and_forall_prenex_left (ι : Type u) [Inhabited ι] (A : Prop) (B : ι �
     constructor
     · intro v0
       exact (h v0).left
-    · have a := h inhabit_iota
+    · have a := h (Classical.choice hι)
       exact a.right
 
-
-theorem or_exists_prenex (ι : Type u) [Inhabited ι] (A : Prop) (B : ι → Prop) :
+theorem or_exists_prenex (ι : Type u) [hι : Nonempty ι] (A : Prop) (B : ι → Prop) :
   (A ∨ (∃ v0 : ι, B v0)) ↔ (∃ v0 : ι, (A ∨ B v0)) := by
   constructor
   · intro h
     cases h with
-    | inl a => apply Exists.intro default; left; exact a
+    | inl a => apply Exists.intro (Classical.choice hι); left; exact a
     | inr b => rcases b with ⟨ v0 , hb ⟩ ; apply Exists.intro v0; right; exact hb
   · intro h
     rcases h with ⟨ v0 , h1 ⟩
@@ -77,31 +72,47 @@ theorem or_exists_prenex (ι : Type u) [Inhabited ι] (A : Prop) (B : ι → Pro
     | inl a => left; exact a
     | inr b => right; apply Exists.intro v0; exact b
 
-theorem or_exists_prenex_left (ι : Type u) [Inhabited ι] (A : Prop) (B : ι → Prop) :
+
+theorem or_exists_prenex_left (ι : Type u) [hι : Nonempty ι] (A : Prop) (B : ι → Prop) :
   ((∃ v0 : ι, B v0) ∨ A) ↔ (∃ v0 : ι, (B v0 ∨ A)) := by
-  grind
+  constructor
+  · intro h
+    cases h with
+    | inl a => rcases a with ⟨ v0 , hb ⟩ ; apply Exists.intro v0; left; exact hb
+    | inr b => apply Exists.intro (Classical.choice hι); right; exact b
+  · intro h
+    rcases h with ⟨ v0 , h1 ⟩
+    cases h1 with
+    | inl b => left; apply Exists.intro v0; exact b
+    | inr a => right; exact a
 
-theorem and_exists_prenex_left (ι : Type u) [Inhabited ι] (A : Prop) (B : ι → Prop) :
+theorem and_exists_prenex_left (ι : Type u) (A : Prop) (B : ι → Prop) :
    ((∃ v0 : ι, B v0) ∧ A) ↔ (∃ v0 : ι, (B v0 ∧ A)) := by
-  grind
+  constructor
+  · intro h
+    cases h with
+    | intro a b => rcases a with ⟨ v0 , hb ⟩ ; apply Exists.intro v0; constructor; exact hb; exact b
+  · intro h
+    rcases h with ⟨ v0 , h1 ⟩
+    constructor
+    · apply Exists.intro v0; exact h1.left
+    · exact h1.right
 
-theorem and_exists_prenex (ι : Type u) [Inhabited ι] (A : Prop) (B : ι → Prop) :
+theorem and_exists_prenex (ι : Type u) (A : Prop) (B : ι → Prop) :
    (A ∧ (∃ v0 : ι, B v0)) ↔ (∃ v0 : ι, (A ∧ B v0)) := by
   simp_all only [exists_and_left]
-
 
 syntax "prenexify" (" at " ident)? : tactic
 
 macro_rules
-  | `(tactic| prenexify) => `(tactic| repeat (first | simp (config := {maxSteps := 10000000}) only [or_forall_prenex_left, and_forall_prenex_left] | simp (config := {maxSteps := 10000000}) only [and_forall_prenex, or_forall_prenex]))
-  | `(tactic| prenexify at $a:ident) => `(tactic | repeat (first | simp (config := {maxSteps := 10000000}) only [or_forall_prenex_left, and_forall_prenex_left] at $a:ident | simp (config := {maxSteps := 10000000}) only [and_forall_prenex, or_forall_prenex] at $a:ident))
+  | `(tactic| prenexify) => `(tactic| repeat (first | simp (config := {maxSteps := 10000000, failIfUnchanged := true}) only [or_forall_prenex_left, and_forall_prenex_left] | simp (config := {maxSteps := 10000000, failIfUnchanged := true}) only [and_forall_prenex, or_forall_prenex]))
+  | `(tactic| prenexify at $a:ident) => `(tactic | repeat (first | simp (config := {maxSteps := 10000000, failIfUnchanged := true}) only [or_forall_prenex_left, and_forall_prenex_left] at $a:ident | simp (config := {maxSteps := 10000000, failIfUnchanged := true}) only [and_forall_prenex, or_forall_prenex] at $a:ident))
 
 syntax "exists_prenex" (" at " ident)? : tactic
 
 macro_rules
-  | `(tactic| exists_prenex) => `(tactic| repeat (first | simp (config := {maxSteps := 10000000}) only [or_exists_prenex_left, and_exists_prenex_left, Classical.skolem] | simp (config := {maxSteps := 10000000}) only [or_exists_prenex, and_exists_prenex, Classical.skolem]))
-  | `(tactic| exists_prenex at $a:ident) => `(tactic | repeat (first | simp (config := {maxSteps := 10000000}) only [or_exists_prenex_left, and_exists_prenex_left, Classical.skolem] at $a:ident | simp (config := {maxSteps := 10000000}) only [or_exists_prenex, and_exists_prenex, Classical.skolem] at $a:ident))
-
+  | `(tactic| exists_prenex) => `(tactic| repeat (first | simp (config := {maxSteps := 10000000, failIfUnchanged := true}) only [or_exists_prenex_left, and_exists_prenex_left, Classical.skolem] | simp (config := {maxSteps := 10000000, failIfUnchanged := true}) only [or_exists_prenex, and_exists_prenex, Classical.skolem]))
+  | `(tactic| exists_prenex at $a:ident) => `(tactic | repeat (first | simp (config := {maxSteps := 10000000, failIfUnchanged := true}) only [or_exists_prenex_left, and_exists_prenex_left, Classical.skolem] at $a:ident | simp (config := {maxSteps := 10000000, failIfUnchanged := true}) only [or_exists_prenex, and_exists_prenex, Classical.skolem] at $a:ident))
 
 theorem not_iff_xor (a b : Prop) : ¬(a ↔ b) ↔ Xor' a b := by
   constructor
@@ -123,74 +134,98 @@ theorem true_xor (a : Prop) : (Xor' True a) ↔ ¬a := by
 theorem false_xor (a : Prop) : (Xor' False a) ↔ a := by
   simp_all only [xor_false, id_eq]
 
-
 theorem our_xor_to_nnf (a b : Prop) : Xor' a b ↔ (¬b ∨ ¬a) ∧ (b ∨ a) := by
-  grind
-
+  unfold Xor'
+  constructor
+  · intro h
+    cases h with
+    | inl x =>
+      constructor
+      · left; exact x.right
+      · right; exact x.left
+    | inr x =>
+      constructor
+      · right; exact x.right
+      · left; exact x.left
+  · intro h
+    have h1 := h.left
+    have h2 := h.right
+    simp only [or_iff_not_imp_left,not_not] at h1 h2
+    apply Classical.by_contradiction
+    intro contra
+    simp_all only [not_or, not_and, not_not, not_false_eq_true, not_true_eq_false, imp_false,
+      or_true, or_false, and_self]
 
 theorem our_iff_to_nnf {a b : Prop} : (a ↔ b) ↔ (a ∨ ¬b) ∧ (b ∨ ¬a) :=
   by
-  grind
+  constructor
+  · intro h
+    rw[h]
+    simp only [and_self]
+    exact Classical.em b
+  · intro h
+    simp only [iff_iff_not_or_and_or_not]
+    rw[And.comm]
+    nth_rewrite 2 [Or.comm]
+    trivial
 
 theorem our_not_xor_to_nnf (a b : Prop) : ¬(Xor' a b) ↔ (a ∨ ¬b) ∧ (b ∨ ¬a) := by
-  grind
+  simp only [not_xor_iff]
+  exact our_iff_to_nnf
 
 theorem our_not_iff_to_nnf (a b : Prop) : ¬(a ↔ b) ↔ (¬b ∨ ¬a) ∧ (b ∨ a) := by
-  grind
+  simp only [not_iff_xor]
+  exact our_xor_to_nnf a b
+
+set_option linter.unusedVariables false in
+theorem forall_false_iff {α : Prop} [hα : Nonempty α] : (∀ x : α, False) ↔ (False) := by
+  constructor
+  · intro h
+    exact h (Classical.choice hα)
+  · intros h x
+    exact h
+
+set_option linter.unusedVariables false in
+theorem exists_true_iff {α : Prop} [hα : Nonempty α] : (∃ x : α, True) ↔ (True) := by
+  constructor
+  · intro h
+    trivial
+  · intro
+    apply Exists.intro (Classical.choice hα)
+    trivial
 
 syntax "ennf_transformation" "at" ident : tactic
 macro_rules
   | `(tactic| ennf_transformation at $a) =>
-    `(tactic | try simp only [imp_iff_or_not, not_and_or, not_or,
+    `(tactic | simp (config := {maxSteps := 10000000, failIfUnchanged := false}) only [imp_iff_or_not, not_and_or, not_or,
       not_not, not_iff_xor, not_xor_iff, not_forall,
-       not_exists, not_false_iff, not_true, xor_self] at $a:ident<;>try simp only [not_true, xor_self])
+       not_exists, not_false_iff, not_true, xor_self] at $a:ident<;> simp (config := {maxSteps := 10000000, failIfUnchanged := false}) only [not_true, xor_self])
 
 syntax "flattening" "at" ident : tactic
 macro_rules
-  | `(tactic| flattening at $a) => `(tactic | try simp only [and_assoc, or_assoc, not_not] at $a:ident)
+  | `(tactic| flattening at $a) => `(tactic | simp (config := {maxSteps := 10000000, failIfUnchanged := false}) only [and_assoc, or_assoc, not_not] at $a:ident<;> simp (config := {maxSteps := 10000000, failIfUnchanged := false}) only [])
 
 syntax "remove_tauto" "at" ident : tactic
 macro_rules
   | `(tactic| remove_tauto at $a) =>
-     `(tactic | try simp only [true_and, false_and, true_or,
-       false_or, not_true, not_false_iff, imp_true, false_imp,
-       true_imp, true_iff, iff_true, false_iff, iff_false,
+     `(tactic | simp (config := {maxSteps := 10000000, failIfUnchanged := false}) only [true_and, and_true, false_and, and_false, or_true, true_or,
+       false_or, or_false, not_true, not_false_iff, imp_true_iff, false_imp_iff,
+       true_imp_iff, true_iff, iff_true, false_iff, iff_false,
        true_xor, xor_true, false_xor, xor_false ,forall_true_iff,
-       forall_false_iff, exists_true_iff_nonempty, exists_false] at $a:ident<;>try simp only [not_true])
+       forall_false_iff, exists_true_iff, exists_false] at $a:ident<;> simp (config := {maxSteps := 10000000, failIfUnchanged := false}) only [not_true])
 
 syntax "nnf_transformation" "at" ident: tactic
 macro_rules
 | `(tactic| nnf_transformation at $a) =>
-    `(tactic | try simp only [↓ not_and_or, ↓ not_or, imp_iff_or_not,
+    `(tactic | simp (config := {maxSteps := 10000000, failIfUnchanged := false}) only [↓ not_and_or, ↓ not_or, imp_iff_or_not,
        ↓ not_not, ↓  not_forall, ↓ not_exists, ↓ not_false,
        ↓ not_true, ↓ our_iff_to_nnf, ↓ our_xor_to_nnf,
-       ↓ our_not_iff_to_nnf, ↓ our_not_xor_to_nnf] at $a:ident<;>try simp only [not_true])
-
-
---  simp [or_forall_prenex]
-
-syntax "and_constr" "⟨" term,* "⟩" : term
-
--- Use an elaboration rule to iteratively build nested `And.intro` applications
-open Term
-
-elab_rules : term
-| `(and_constr ⟨ $[$ts:term],* ⟩) => do
-  let terms := ts
-  if terms.isEmpty then
-    throwError "and_constr: requires at least one term"
-  -- start with the last term and iteratively build `And.intro` applications
-  let mut accExpr ← elabTerm terms[terms.size - 1]! none
-  let mut i := terms.size
-  while i > 1 do
-    i := i - 1
-    let tExpr ← elabTerm terms[i - 1]! none
-    accExpr ← mkAppM ``And.intro #[tExpr, accExpr]
-  return accExpr
-
+       ↓ our_not_iff_to_nnf, ↓ our_not_xor_to_nnf] at $a:ident<;>try simp (config := {maxSteps := 10000000, failIfUnchanged := false}) only [not_true])
 
 
 partial def symmUnify (e1 e2 : Expr) : MetaM Expr := do
+  let e1 ← whnf e1
+  let e2 ← whnf e2
   if ← isDefEq e1 e2 then return ← mkEqRefl e1
   -- Leaf Case: (a = b) vs (b = a)
   if let some (_, l1, r1) := e1.eq? then
@@ -198,16 +233,35 @@ partial def symmUnify (e1 e2 : Expr) : MetaM Expr := do
       if (← isDefEq l1 r2) && (← isDefEq r1 l2) then
         let commIff ← mkAppOptM ``Eq.comm #[none, some l1, some r1]
         return ← mkAppM ``propext #[commIff]
-  if e1.isForall && e2.isForall then
+  if e1.isArrow && e2.isArrow then
+    let dom1 := e1.bindingDomain!
+    let dom2 := e2.bindingDomain!
+    let body1 := e1.bindingBody!
+    let body2 := e2.bindingBody!
+    let domEq ← symmUnify dom1 dom2
+    let bodyEq ← symmUnify body1 body2
+    return ← mkAppM ``imp_congr_eq #[domEq, bodyEq]
+  if e1.isForall && e2.isForall && !e1.isArrow && !e2.isArrow then
     if !(← isDefEq e1.bindingDomain! e2.bindingDomain!) then
       throwError "Symmetry match failed: Quantifier domain mismatch."
     return ← withLocalDecl e1.bindingName! e1.bindingInfo! e1.bindingDomain! fun x => do
       -- Instantiate the binder bodies with the local variable x
       let b1 := e1.bindingBody!.instantiate1 x
       let b2 := e2.bindingBody!.instantiate1 x
+      --trace debug b1 b2
       let eqBody ← symmUnify b1 b2
       -- mkForallCongr: (∀ x, P x = Q x) → (∀ x, P x) = (∀ x, Q x)
       mkForallCongr (← mkLambdaFVars #[x] eqBody)
+  if e1.isLambda && e2.isLambda then
+    if !(← isDefEq e1.bindingDomain! e2.bindingDomain!) then
+      throwError "Symmetry match failed: Lambda domain mismatch."
+    return ← withLocalDecl e1.bindingName! e1.bindingInfo! e1.bindingDomain! fun x => do
+      let b1 := e1.bindingBody!.instantiate1 x
+      let b2 := e2.bindingBody!.instantiate1 x
+      let eqBody ← symmUnify b1 b2
+      -- Apply funext: (∀ x, f x = g x) → f = g
+      let proofForall ← mkLambdaFVars #[x] eqBody
+      mkAppM ``funext #[proofForall]
   -- Structural Recursion
   if e1.isApp && e2.isApp then
     let f1 := e1.getAppFn
@@ -218,10 +272,13 @@ partial def symmUnify (e1 e2 : Expr) : MetaM Expr := do
       if args1.size == args2.size then
         let mut pr ← mkEqRefl f1
         for i in [:args1.size] do
-          let argPr ← symmUnify args1[i]! args2[i]!
-          pr ← mkAppM ``congr #[pr, argPr]
+          let arg1 := args1[i]!
+          let arg2 := args2[i]!
+          let argPr ← symmUnify arg1 arg2
+          -- mkCongr: given (f = g) and (a = b), produces (f a = g b)
+          pr ← mkCongr pr argPr
         return pr
-  throwError "Symmetry match failed between types:\n  {e1}\n  {e2}"
+  throwError "Symmetry match failed between types:\n  {e1} and \n  {e2}"
 
 /--
   Usage:
@@ -244,3 +301,74 @@ elab_rules : tactic
       let eqPr ← symmUnify hypDecl.type target
       let finalPr ← mkAppM ``Eq.mp #[eqPr, hypDecl.toExpr]
       goal.assign finalPr
+
+
+theorem sat_or_norm1 {a b:Bool} : (¬(a = true) ∨ (b = true)) = (!a || b) := by
+  simp only [Bool.not_eq_true, Bool.or_eq_true, Bool.not_eq_eq_eq_not, Bool.not_true]
+
+theorem sat_or_norm2 {a b: Bool} : ((a = true) ∨ ¬(b = true)) = (a || !b) := by
+  simp only [Bool.not_eq_true, Bool.or_eq_true, Bool.not_eq_eq_eq_not, Bool.not_true]
+
+theorem sat_or_norm3 {a b:Bool} : (¬(a = true) ∨ ¬(b = true)) = (!a || !b) := by
+  simp only [Bool.not_eq_true, Bool.or_eq_true, Bool.not_eq_eq_eq_not, Bool.not_true]
+
+theorem sat_or_norm4 {a b:Bool} : ((a = true) ∨ (b = true)) = (a || b) := by
+  simp only [Bool.or_eq_true]
+
+theorem sat_not_norm1 {a:Bool} : (¬a = true) = (!a) := by
+  simp only [Bool.not_eq_true, Bool.not_eq_eq_eq_not, Bool.not_true]
+
+syntax "rewrite_decide_eq" "[" (ident)+ "]" : tactic
+elab "rewrite_decide_eq" "[" vars:(ident)+ "]" : tactic => do
+  for v in vars do
+    Lean.Elab.Tactic.evalTactic (← `(tactic| rewrite [← @decide_eq_true_eq $(v)]))
+
+syntax "sat_norm" : tactic
+macro_rules
+  | `(tactic| sat_norm) => `(tactic | simp (config := {maxSteps := 10000000, failIfUnchanged := false}) only [sat_or_norm1, sat_or_norm2, sat_or_norm3, sat_or_norm4, ← Bool.or_assoc, sat_not_norm1])
+
+theorem cnf1 {a b c : Prop} : a ∧ b ∨ c ↔ (a ∨ c) ∧ (b ∨ c) := by
+  exact and_or_right
+
+theorem cnf2 {a b c : Prop} : c ∨ a ∧ b ↔ (c ∨ a) ∧ (c ∨ b) := by
+  exact or_and_left
+
+theorem cnf_prenex1 {α : Sort u} [hα : Nonempty α] (a : α → Prop) (b : Prop) : (∀ x, a x ∧ b) ↔ (∀ x, a x) ∧ b := by
+  constructor
+  · intro h
+    constructor
+    · intro x
+      exact (h x).left
+    · exact (h (Classical.choice hα)).right
+  · intro h x
+    constructor
+    · exact h.left x
+    · exact h.right
+
+theorem cnf_prenex2 {α : Sort u} [hα : Nonempty α] (a : α → Prop) (b : Prop) : (∀ x, b ∧ a x) ↔ b ∧ (∀ x, a x) := by
+  constructor
+  · intro h
+    constructor
+    · exact (h (Classical.choice hα)).left
+    · intro x
+      exact (h x).right
+  · intro h x
+    constructor
+    · exact h.left
+    · exact h.right x
+
+theorem cnf_prenex3 {α : Sort u} (a b : α → Prop) : (∀ x, a x ∧ b x) ↔ (∀ x, a x) ∧ (∀ x, b x) := by
+  constructor
+  · intro h
+    constructor
+    · intro x
+      exact (h x).left
+    · intro x
+      exact (h x).right
+  · intro h x
+    constructor
+    · exact h.left x
+    · exact h.right x
+
+syntax "cnfify" "at" ident : tactic
+macro_rules  | `(tactic| cnfify at $a) => `(tactic | (simp (config := {maxSteps := 10000000, failIfUnchanged := false}) only [cnf1, cnf2, and_assoc] at $a:ident; simp (config := {maxSteps := 10000000, failIfUnchanged := false}) only [cnf_prenex1, cnf_prenex2, cnf_prenex3] at $a:ident))
