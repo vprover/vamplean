@@ -8,5 +8,5 @@ To add it to a lake project, add the following to the lakefile.toml:
 [[require]]
 name = "vamplean"
 git = "https://github.com/vprover/vamplean"
-rev = "v4.28.0"
+rev = "v4.29.0"
 ~~~
