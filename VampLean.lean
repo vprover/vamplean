@@ -457,12 +457,15 @@ theorem exists'_skolem.{v} {α : Sort u} {b : α → Sort v} {p : (x : α) → b
   simp_all [exists'_eq_exists, Classical.skolem]
 
 
+theorem exists'_exists_prenex.{v} (α : Type u) (β: Type v) (A : α → β → Prop) : (∃ x: α, exists' (fun y : β => A x y)) ↔ (exists' (fun x: β => ∃ y: α, A y x)) := by
+  simp_all only [exists'_eq_exists]
+  rw[exists_comm]
 
 syntax "existspr_prenex" (" at " ident)? : tactic
 
 macro_rules
-  | `(tactic| existspr_prenex) => `(tactic| simp (config := {maxSteps := 10000000, failIfUnchanged := false}) only [or_exists'_prenex_left, and_exists'_prenex_left, exists'_skolem, or_exists'_prenex, and_exists'_prenex])
-  | `(tactic| existspr_prenex at $a:ident) => `(tactic | simp (config := {maxSteps := 10000000, failIfUnchanged := false}) only [or_exists'_prenex_left, and_exists'_prenex_left, exists'_skolem, or_exists'_prenex, and_exists'_prenex] at $a:ident)
+  | `(tactic| existspr_prenex) => `(tactic| simp (config := {maxSteps := 10000000, failIfUnchanged := false}) only [or_exists'_prenex_left, and_exists'_prenex_left, exists'_skolem, or_exists'_prenex, and_exists'_prenex, exists'_exists_prenex] )
+  | `(tactic| existspr_prenex at $a:ident) => `(tactic | simp (config := {maxSteps := 10000000, failIfUnchanged := false}) only [or_exists'_prenex_left, and_exists'_prenex_left, exists'_skolem, or_exists'_prenex, and_exists'_prenex,exists'_exists_prenex] at $a:ident)
 
 open Lean Meta Elab Tactic
 
