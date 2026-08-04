@@ -248,7 +248,7 @@ macro_rules
   | `(tactic| ennf_transformation at $a) =>
     `(tactic | simp (config := {maxSteps := 10000000, failIfUnchanged := false}) only [imp_iff_or_not, not_and_or, not_or,
       Classical.not_not, not_iff_xor, not_xor_iff, Classical.not_forall,
-       not_exists, not_false_iff, not_true, xor_self] at $a:ident<;> simp (config := {maxSteps := 10000000, failIfUnchanged := false}) only [not_true, xor_self])
+       not_exists, not_false_iff, not_true, xor_self, ne_eq,-eq_self] at $a:ident<;> simp (config := {maxSteps := 10000000, failIfUnchanged := false}) only [not_true, xor_self, -eq_self])
 
 syntax "flattening" "at" ident : tactic
 macro_rules
@@ -460,6 +460,9 @@ theorem exists'_skolem.{v} {α : Sort u} {b : α → Sort v} {p : (x : α) → b
 theorem exists'_exists_prenex.{v} (α : Type u) (β: Type v) (A : α → β → Prop) : (∃ x: α, exists' (fun y : β => A x y)) ↔ (exists' (fun x: β => ∃ y: α, A y x)) := by
   simp_all only [exists'_eq_exists]
   rw[exists_comm]
+
+
+#check Classical.skolem
 
 syntax "existspr_prenex" (" at " ident)? : tactic
 
