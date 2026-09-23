@@ -11,6 +11,8 @@ set_option warningAsError false
 
 set_option maxHeartbeats 1000000000
 
+namespace VampLean
+
 variable {iota : Type u}
 variable [Inhabited iota]
 
@@ -502,3 +504,5 @@ def evalClearExcept : Tactic := fun stx => do
       -- Update the proof state with the new goal
       replaceMainGoal [newMVarId]
   | _ => throwUnsupportedSyntax
+
+end VampLean
