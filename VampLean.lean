@@ -115,17 +115,24 @@ theorem and_exists_prenex (ι : Type u) (A : Prop) (B : ι → Prop) :
 
 export Classical (not_not)
 
+/-! The preprocessing tactics below are also used for proof replay against
+Vampire's printed clauses. Lean's built-in `eq_self` simp theorem rewrites
+`t = t` to `True`, which subsequently erases a displayed `t != t` literal.
+That changes clause presentation even for tactics whose purpose is only to
+move quantifiers or reassociate connectives. Such tactics explicitly exclude
+`eq_self`; `remove_tauto` intentionally remains the exception. -/
+
 syntax "prenexify" (" at " ident)? : tactic
 
 macro_rules
-  | `(tactic| prenexify) => `(tactic| repeat (first | simp (config := {maxSteps := 10000000, failIfUnchanged := true}) only [or_forall_prenex_left, and_forall_prenex_left] | simp (config := {maxSteps := 10000000, failIfUnchanged := true}) only [and_forall_prenex, or_forall_prenex]))
-  | `(tactic| prenexify at $a:ident) => `(tactic | repeat (first | simp (config := {maxSteps := 10000000, failIfUnchanged := true}) only [or_forall_prenex_left, and_forall_prenex_left] at $a:ident | simp (config := {maxSteps := 10000000, failIfUnchanged := true}) only [and_forall_prenex, or_forall_prenex] at $a:ident))
+  | `(tactic| prenexify) => `(tactic| repeat (first | simp (config := {maxSteps := 10000000, failIfUnchanged := true}) only [or_forall_prenex_left, and_forall_prenex_left, -eq_self] | simp (config := {maxSteps := 10000000, failIfUnchanged := true}) only [and_forall_prenex, or_forall_prenex, -eq_self]))
+  | `(tactic| prenexify at $a:ident) => `(tactic | repeat (first | simp (config := {maxSteps := 10000000, failIfUnchanged := true}) only [or_forall_prenex_left, and_forall_prenex_left, -eq_self] at $a:ident | simp (config := {maxSteps := 10000000, failIfUnchanged := true}) only [and_forall_prenex, or_forall_prenex, -eq_self] at $a:ident))
 
 syntax "exists_prenex" (" at " ident)? : tactic
 
 macro_rules
-  | `(tactic| exists_prenex) => `(tactic| repeat (first | simp (config := {maxSteps := 10000000, failIfUnchanged := true}) only [or_exists_prenex_left, and_exists_prenex_left, Classical.skolem] | simp (config := {maxSteps := 10000000, failIfUnchanged := true}) only [or_exists_prenex, and_exists_prenex, Classical.skolem]))
-  | `(tactic| exists_prenex at $a:ident) => `(tactic | repeat (first | simp (config := {maxSteps := 10000000, failIfUnchanged := true}) only [or_exists_prenex_left, and_exists_prenex_left, Classical.skolem] at $a:ident | simp (config := {maxSteps := 10000000, failIfUnchanged := true}) only [or_exists_prenex, and_exists_prenex, Classical.skolem] at $a:ident))
+  | `(tactic| exists_prenex) => `(tactic| repeat (first | simp (config := {maxSteps := 10000000, failIfUnchanged := true}) only [or_exists_prenex_left, and_exists_prenex_left, Classical.skolem, -eq_self] | simp (config := {maxSteps := 10000000, failIfUnchanged := true}) only [or_exists_prenex, and_exists_prenex, Classical.skolem, -eq_self]))
+  | `(tactic| exists_prenex at $a:ident) => `(tactic | repeat (first | simp (config := {maxSteps := 10000000, failIfUnchanged := true}) only [or_exists_prenex_left, and_exists_prenex_left, Classical.skolem, -eq_self] at $a:ident | simp (config := {maxSteps := 10000000, failIfUnchanged := true}) only [or_exists_prenex, and_exists_prenex, Classical.skolem, -eq_self] at $a:ident))
 
 def Xor' (a b : Prop) := (a ∧ ¬b) ∨ (b ∧ ¬a)
 
@@ -254,7 +261,7 @@ macro_rules
 
 syntax "flattening" "at" ident : tactic
 macro_rules
-  | `(tactic| flattening at $a) => `(tactic | simp (config := {maxSteps := 10000000, failIfUnchanged := false}) only [and_assoc, or_assoc, Classical.not_not] at $a:ident<;> simp (config := {maxSteps := 10000000, failIfUnchanged := false}) only [])
+  | `(tactic| flattening at $a) => `(tactic | simp (config := {maxSteps := 10000000, failIfUnchanged := false}) only [and_assoc, or_assoc, Classical.not_not, -eq_self] at $a:ident<;> simp (config := {maxSteps := 10000000, failIfUnchanged := false}) only [-eq_self])
 
 syntax "remove_tauto" "at" ident : tactic
 macro_rules
@@ -271,7 +278,7 @@ macro_rules
     `(tactic | simp (config := {maxSteps := 10000000, failIfUnchanged := false}) only [↓ not_and_or, ↓ not_or, imp_iff_or_not,
        ↓ Classical.not_not, ↓  Classical.not_forall, ↓ not_exists, ↓ not_false,
        ↓ not_true, ↓ our_iff_to_nnf, ↓ our_xor_to_nnf,
-       ↓ our_not_iff_to_nnf, ↓ our_not_xor_to_nnf] at $a:ident<;>try simp (config := {maxSteps := 10000000, failIfUnchanged := false}) only [not_true])
+       ↓ our_not_iff_to_nnf, ↓ our_not_xor_to_nnf, -eq_self] at $a:ident<;>try simp (config := {maxSteps := 10000000, failIfUnchanged := false}) only [not_true, -eq_self])
 
 theorem imp_congr_eq {a b c d : Prop} (h₁ : a = c) (h₂ : b = d) : (a → b) = (c → d) :=
   propext (imp_congr h₁.to_iff h₂.to_iff)
@@ -427,7 +434,7 @@ theorem cnf_prenex3 {α : Sort u} (a b : α → Prop) : (∀ x, a x ∧ b x) ↔
     · exact h.right x
 
 syntax "cnfify" "at" ident : tactic
-macro_rules  | `(tactic| cnfify at $a) => `(tactic | (simp (config := {maxSteps := 10000000, failIfUnchanged := false}) only [cnf1, cnf2, and_assoc] at $a:ident; simp (config := {maxSteps := 10000000, failIfUnchanged := false}) only [cnf_prenex1, cnf_prenex2, cnf_prenex3] at $a:ident))
+macro_rules  | `(tactic| cnfify at $a) => `(tactic | (simp (config := {maxSteps := 10000000, failIfUnchanged := false}) only [cnf1, cnf2, and_assoc, -eq_self] at $a:ident; simp (config := {maxSteps := 10000000, failIfUnchanged := false}) only [cnf_prenex1, cnf_prenex2, cnf_prenex3, -eq_self] at $a:ident))
 
 def exists' {α : Sort u} (p : α → Prop) := ∃ x, p x
 
